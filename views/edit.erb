@@ -1,0 +1,5 @@
+<form action="/<%= @file_name %>/edit" method="post">
+  <label for="updated_text">Edit content of <%= @file_name %>:</label>
+  <textarea id="updated_text" name="updated_text" rows="30" cols="80"><%= @file_contents %></textarea>
+  <input type="submit" value="Submit">
+</form>

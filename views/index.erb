@@ -1,0 +1,12 @@
+<% if session[:msg] %>
+  <p class="flash"><%= session.delete(:msg) %></p>
+<% end %>
+
+<ul>
+  <% @files.each do |file| %>
+    <li>
+      <a href="<%= file %>"><%= file %></a>
+      <a href="<%= file %>/edit">Edit</a>
+    </li>
+  <% end %>
+</ul>
