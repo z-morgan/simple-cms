@@ -27,7 +27,7 @@ def retrieve_contents(file_name)
   if file_name.include?(".txt")
     retrieve_txt(file_name)
   elsif file_name.include?(".md")
-    convert_markdown(file_name)
+    erb convert_markdown(file_name)
   end
 end
 
@@ -47,6 +47,10 @@ end
 
 get '/' do
   erb :index
+end
+
+get '/new' do
+  erb :new
 end
 
 get '/:file' do
@@ -74,3 +78,41 @@ post '/:file/edit' do
   redirect '/'
 end
 
+def invalid_name(name)
+  if name.empty?
+    session[:msg] = "A name is required."
+  elsif !(name =~ /\.\w+\z/)
+    session[:msg] = "The name must include a file extention (such as \".txt\")"
+  end
+end
+
+post '/new' do
+  name = params[:new_name]
+  begin
+    if invalid_name(name)
+      status 422
+      erb :new
+    else
+      path = File.join(data_path, name)
+
+      # the 'x' suffix creates the file, or raises Exeption if it exists already
+      File.new(path, 'wx')
+      
+      session[:msg] = "#{name} has been created."
+      redirect '/'
+    end
+  rescue Errno::EEXIST
+    session[:msg] = "A document with that name already exists."
+    status 422
+    erb :new
+  end
+end
+
+post '/delete/:field' do # THIS SHOULD BE A POST, AND INDEX.ERB SHOULD USE A FORM
+  path = File.join(data_path, params[:field])
+  File.delete(path)
+  session[:msg] = "#{params[:field]} was deleted."
+  redirect '/'
+end
+
+# LOOK AT SOLUTION FOR DELETING DOCUMENTS ASSIGNMENT

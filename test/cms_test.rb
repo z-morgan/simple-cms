@@ -13,15 +13,20 @@ class CmsTest < Minitest::Test
     Sinatra::Application
   end
 
-  # moves the process to the project root directory, and populates history.txt
-  def setup
-    proj_root = File.expand_path("../..", __FILE__)
-    Dir.chdir(proj_root)
+  # creates a file, and can populate it with content
+  def create_document(name, content = "")
+    path = File.join(data_path, name)
+    File.open(path, "w") { |file| file.write(content) }
+  end
 
+  def setup
     # mkdir_p creates the directories and files in the argument string if they do not exist
     FileUtils.mkdir_p(data_path) # data_path method is defined on main in cms.rb, and is in-scope here
 
-    # File.write("data/history.txt", "2014 - Ruby 2.2 released.")
+    create_document "history.txt", "2014 - Ruby 2.2 released."
+    create_document "changes.txt", "v. 0.9 - started working on the app"
+    create_document "about.txt", "This is the about page for my app! "
+    create_document "readme.md", "Here is `x = markdown!` Isn't that *swell*?"
   end
 
   def teardown
@@ -86,5 +91,58 @@ class CmsTest < Minitest::Test
     get "/history.txt"
     assert_equal 200, last_response.status
     assert_includes last_response.body, "1993 - Matz the man dreams up Ruby."
+  end
+
+  def test_create_unique_document
+    get '/'
+    refute_includes last_response.body, "new.txt"
+    assert_includes last_response.body, "<a"
+    assert_includes last_response.body, "Add a Document"
+
+    get '/new' # is there a way to revieve that href from the 'add a document' anchor? 
+    assert_equal 200, last_response.status
+    assert_includes last_response.body, "<form"
+    assert_includes last_response.body, %q(type="text")
+
+    post '/new', new_name: "new.txt"
+    assert_equal 302, last_response.status
+    
+
+    get last_response["Location"]
+    assert_includes last_response.body, "new.txt has been created."
+
+    get '/'
+    assert_includes last_response.body, "new.txt"
+  end
+
+  def test_create_empty_name_retry
+    post '/new', new_name: ""
+    assert_equal 422, last_response.status
+    assert_includes last_response.body, "A name is required."
+    assert_includes last_response.body, "<form"
+  end
+
+  def test_duplicate_doc_retry
+    post '/new', new_name: "new.txt"
+    post '/new', new_name: "new.txt"
+    assert_equal 422, last_response.status
+    assert_includes last_response.body, "A document with that name already exists."
+    assert_includes last_response.body, "<form"
+  end
+
+  def test_no_file_extension
+    post '/new', new_name: "new"
+    assert_equal 422, last_response.status
+    assert_includes last_response.body, "must include a file extention"
+    assert_includes last_response.body, "<form"
+  end
+
+  def test_delete_document
+    get '/'
+    assert_includes last_response.body, %q(<form class="delete")
+
+    post '/delete/history.txt'
+    assert_equal 302, last_response.status
+    refute_includes last_response.body, "history.txt"
   end
 end
